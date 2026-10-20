@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
@@ -73,4 +74,35 @@ func main() {
 
 	// TODO: Uncomment the line below to pass the first stage
 	fmt.Print(resp.Choices[0].Message.Content)
+
+	tool_calls := resp.Choices[0].Message.ToolCalls
+	if len(tool_calls) == 0 {
+		fmt.Print(resp.Choices[0].Message.Content)
+	} else {
+		handleTool(tool_calls[0])
+	}
+}
+
+func handleTool(tool_call openai.ChatCompletionMessageToolCallUnion) any {
+	tool_name := tool_call.Function.Name
+	tool_args := tool_call.Function.Arguments
+	var tool_args_map map[string]string
+	args_err := json.Unmarshal([]byte(tool_args), tool_args_map)
+
+	if args_err != nil {
+		return args_err
+	}
+
+	switch tool_name {
+	case "Read":
+		data, err := os.ReadFile(tool_args_map["file_path"])
+		if err != nil {
+			return err
+		}
+		text := string(data)
+		fmt.Print(text)
+	default:
+		fmt.Print("Unknow tool")
+	}
+	return nil
 }
