@@ -87,7 +87,7 @@ func handleTool(tool_call openai.ChatCompletionMessageToolCallUnion) any {
 	tool_args := tool_call.Function.Arguments
 	fmt.Fprintf(os.Stderr, "debug %v\n", tool_args)
 	var tool_args_map map[string]string
-	args_err := json.Unmarshal([]byte(tool_args), tool_args_map)
+	args_err := json.Unmarshal([]byte(tool_args), &tool_args_map)
 
 	fmt.Fprintf(os.Stderr, "debug %v\n", tool_args_map)
 	if args_err != nil {
