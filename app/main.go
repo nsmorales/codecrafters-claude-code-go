@@ -72,6 +72,8 @@ func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Fprintln(os.Stderr, "Logs from your program will appear here!")
 
+	fmt.Fprintf(os.Stderr, "debug %v\n", resp.Choices[0])
+
 	tool_calls := resp.Choices[0].Message.ToolCalls
 	if len(tool_calls) == 0 {
 		fmt.Print(resp.Choices[0].Message.Content)
@@ -86,6 +88,7 @@ func handleTool(tool_call openai.ChatCompletionMessageToolCallUnion) any {
 	var tool_args_map map[string]string
 	args_err := json.Unmarshal([]byte(tool_args), tool_args_map)
 
+	fmt.Fprintf(os.Stderr, "debug %v\n", tool_args_map)
 	if args_err != nil {
 		return args_err
 	}
