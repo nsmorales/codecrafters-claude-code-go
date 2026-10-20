@@ -16,9 +16,13 @@ func main() {
 	flag.StringVar(&prompt, "p", "", "Prompt to send to LLM")
 	flag.Parse()
 
+	var messages []any
+
 	if prompt == "" {
 		panic("Prompt must not be empty")
 	}
+
+	messages = append(messages, map[string]string{"role": "user", "content": prompt})
 
 	apiKey := os.Getenv("OPENROUTER_API_KEY")
 	baseUrl := os.Getenv("OPENROUTER_BASE_URL")
@@ -72,34 +76,42 @@ func main() {
 	// You can use print statements as follows for debugging, they'll be visible when running tests.
 	fmt.Fprintln(os.Stderr, "Logs from your program will appear here!")
 
+	messages = append(messages, resp)
+
 	tool_calls := resp.Choices[0].Message.ToolCalls
 	if len(tool_calls) == 0 {
 		fmt.Print(resp.Choices[0].Message.Content)
 	} else {
-		handleTool(tool_calls[0])
+		for _, tool_call := range tool_calls {
+
+			result, err := handleTool(tool_call)
+			if err == nil {
+				messages = append(messages, map[string]string{"role": "tool", "tool_call_id": tool_call.ID, "content": result})
+			}
+		}
 	}
 }
 
-func handleTool(tool_call openai.ChatCompletionMessageToolCallUnion) any {
+func handleTool(tool_call openai.ChatCompletionMessageToolCallUnion) (string, error) {
 	tool_name := tool_call.Function.Name
 	tool_args := tool_call.Function.Arguments
 	var tool_args_map map[string]string
 	args_err := json.Unmarshal([]byte(tool_args), &tool_args_map)
 
 	if args_err != nil {
-		return args_err
+		return "", args_err
 	}
 
 	switch tool_name {
 	case "Read":
 		data, err := os.ReadFile(tool_args_map["file_path"])
 		if err != nil {
-			return err
+			return "", err
 		}
 		text := string(data)
-		fmt.Print(text)
+		return text, nil
 	default:
 		fmt.Print("Unknow tool")
 	}
-	return nil
+	return "", nil
 }
