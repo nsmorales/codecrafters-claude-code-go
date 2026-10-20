@@ -16,13 +16,13 @@ func main() {
 	flag.StringVar(&prompt, "p", "", "Prompt to send to LLM")
 	flag.Parse()
 
-	var messages []any
+	var messages []openai.ChatCompletionMessageParamUnion
 
 	if prompt == "" {
 		panic("Prompt must not be empty")
 	}
 
-	messages = append(messages, map[string]string{"role": "user", "content": prompt})
+	messages = append(messages, openai.UserMessage(prompt))
 
 	apiKey := os.Getenv("OPENROUTER_API_KEY")
 	baseUrl := os.Getenv("OPENROUTER_BASE_URL")
@@ -34,61 +34,57 @@ func main() {
 		panic("Env variable OPENROUTER_API_KEY not found")
 	}
 
+	fmt.Fprintln(os.Stderr, "Logs from your program will appear here!")
 	client := openai.NewClient(option.WithAPIKey(apiKey), option.WithBaseURL(baseUrl))
-	resp, err := client.Chat.Completions.New(context.Background(),
-		openai.ChatCompletionNewParams{
-			Model: "anthropic/claude-haiku-4.5",
-			Messages: []openai.ChatCompletionMessageParamUnion{
-				{
-					OfUser: &openai.ChatCompletionUserMessageParam{
-						Content: openai.ChatCompletionUserMessageParamContentUnion{
-							OfString: openai.String(prompt),
+
+	for {
+
+		resp, err := client.Chat.Completions.New(context.Background(),
+			openai.ChatCompletionNewParams{
+				Model:    "anthropic/claude-haiku-4.5",
+				Messages: messages,
+				Tools: []openai.ChatCompletionToolUnionParam{
+					openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
+						Name:        "Read",
+						Description: openai.String("Read and return the contents of a file"),
+						Parameters: openai.FunctionParameters{
+							"type": "object",
+							"properties": map[string]any{
+								"file_path": map[string]any{
+									"type":        "string",
+									"description": "The path to the file to read",
+								},
+							},
+							"required": []string{"file_path"},
 						},
-					},
+					}),
 				},
 			},
-			Tools: []openai.ChatCompletionToolUnionParam{
-				openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
-					Name:        "Read",
-					Description: openai.String("Read and return the contents of a file"),
-					Parameters: openai.FunctionParameters{
-						"type": "object",
-						"properties": map[string]any{
-							"file_path": map[string]any{
-								"type":        "string",
-								"description": "The path to the file to read",
-							},
-						},
-						"required": []string{"file_path"},
-					},
-				}),
-			},
-		},
-	)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		os.Exit(1)
-	}
-	if len(resp.Choices) == 0 {
-		panic("No choices in response")
-	}
+		)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		if len(resp.Choices) == 0 {
+			panic("No choices in response")
+		}
 
-	// You can use print statements as follows for debugging, they'll be visible when running tests.
-	fmt.Fprintln(os.Stderr, "Logs from your program will appear here!")
+		messages = append(messages, resp.Choices[0].Message.ToParam())
 
-	messages = append(messages, resp)
+		tool_calls := resp.Choices[0].Message.ToolCalls
+		if len(tool_calls) == 0 {
+			fmt.Print(resp.Choices[0].Message.Content)
+			break
+		} else {
+			for _, tool_call := range tool_calls {
 
-	tool_calls := resp.Choices[0].Message.ToolCalls
-	if len(tool_calls) == 0 {
-		fmt.Print(resp.Choices[0].Message.Content)
-	} else {
-		for _, tool_call := range tool_calls {
-
-			result, err := handleTool(tool_call)
-			if err == nil {
-				messages = append(messages, map[string]string{"role": "tool", "tool_call_id": tool_call.ID, "content": result})
+				result, err := handleTool(tool_call)
+				if err == nil {
+					messages = append(messages, openai.ToolMessage(result, tool_call.ID))
+				}
 			}
 		}
+
 	}
 }
 
