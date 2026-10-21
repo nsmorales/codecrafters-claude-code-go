@@ -38,6 +38,7 @@ func main() {
 
 	skill_promt := "You have access to the following skills: /n"
 	entries, err := os.ReadDir(".claude/skills/")
+	fmt.Fprintf(os.Stdout, "%v\n", entries)
 	if err == nil {
 		var skills_headers []string
 
