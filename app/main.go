@@ -45,7 +45,7 @@ func main() {
 		skills_headers = append(skills_headers, skill_promt)
 		for _, skill := range entries {
 
-			skill_header, _ := extractSkillInfo(skill.Name() + "/SKILL.md")
+			skill_header, _ := extractSkillInfo(".claude/skills/" + skill.Name() + "/SKILL.md")
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			}
