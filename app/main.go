@@ -40,13 +40,17 @@ func main() {
 	entries, err := os.ReadDir(".claude/skills/")
 	if err == nil {
 		var skills_headers []string
-		skill_header, _ := extractSkillInfo(entries[0].Name() + "/SKILL.md")
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		}
-		fmt.Fprintf(os.Stderr, "skill_header: %v\n", skill_header)
+
 		skills_headers = append(skills_headers, skill_promt)
-		skills_headers = append(skills_headers, fmt.Sprintf("- %s: %s", skill_header["name"], skill_header["description"]))
+		for _, skill := range entries {
+
+			skill_header, _ := extractSkillInfo(skill.Name() + "/SKILL.md")
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			}
+			fmt.Fprintf(os.Stderr, "skill_header: %v\n", skill_header)
+			skills_headers = append(skills_headers, fmt.Sprintf("- %s: %s", skill_header["name"], skill_header["description"]))
+		}
 		messages = append(messages, openai.SystemMessage(strings.Join(skills_headers, "\n")))
 	}
 
@@ -191,6 +195,7 @@ func extractSkillInfo(path string) (map[string]any, error) {
 	started := false
 	for sc.Scan() {
 		line := sc.Text()
+		fmt.Fprintf(os.Stdout, "%v", line)
 		if strings.HasPrefix(line, "---") && !started {
 			started = true
 		} else if strings.HasPrefix(line, "---") && started {
