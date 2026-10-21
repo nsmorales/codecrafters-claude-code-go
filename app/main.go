@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
@@ -76,6 +77,24 @@ func main() {
 							"required": []string{"file_path", "content"},
 						},
 					}),
+					openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
+						Name:        "Bash",
+						Description: openai.String("Execute a shell command"),
+						Parameters: openai.FunctionParameters{
+							"type": "object",
+							"properties": map[string]any{
+								"command": map[string]any{
+									"type":        "string",
+									"description": "The path to the file to write to",
+								},
+								"content": map[string]any{
+									"type":        "string",
+									"description": "The command to execute",
+								},
+							},
+							"required": []string{"command"},
+						},
+					}),
 				},
 			},
 		)
@@ -130,8 +149,15 @@ func handleTool(tool_call openai.ChatCompletionMessageToolCallUnion) (string, er
 			return "", err
 		}
 		return "Write sucessfull", nil
+	case "Bash":
+		cmd := exec.Command("bash", "-c", tool_args_map["command"])
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			return string(out), err
+		}
+		return string(out), nil
 	default:
 		fmt.Print("Unknow tool")
 	}
-	return "", nil
+	return "Unknow tool call", nil
 }
