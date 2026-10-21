@@ -8,10 +8,11 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 
-	"github.com/oasdiff/yaml"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
+	"gopkg.in/yaml.v3"
 )
 
 func main() {
@@ -25,8 +26,6 @@ func main() {
 		panic("Prompt must not be empty")
 	}
 
-	messages = append(messages, openai.UserMessage(prompt))
-
 	apiKey := os.Getenv("OPENROUTER_API_KEY")
 	baseUrl := os.Getenv("OPENROUTER_BASE_URL")
 	if baseUrl == "" {
@@ -37,12 +36,18 @@ func main() {
 		panic("Env variable OPENROUTER_API_KEY not found")
 	}
 
+	skill_promt := "You have access to the following skills: /n"
 	entries, err := os.ReadDir(".claude/skills/")
 	if err == nil {
+		var skills_headers []string
 		skill_header, _ := extractSkillInfo(entries[0].Name() + "/SKILL.md")
 		fmt.Fprintf(os.Stderr, "skill_header: %v\n", skill_header)
+		skills_headers = append(skills_headers, skill_promt)
+		skills_headers = append(skills_headers, fmt.Sprintf("- %s: %s", skill_header["name"], skill_header["description"]))
+		messages = append(messages, openai.SystemMessage(strings.Join(skills_headers, "\n")))
 	}
 
+	messages = append(messages, openai.UserMessage(prompt))
 	fmt.Fprintln(os.Stderr, "Logs from your program will appear here!")
 	client := openai.NewClient(option.WithAPIKey(apiKey), option.WithBaseURL(baseUrl))
 
@@ -170,7 +175,7 @@ func handleTool(tool_call openai.ChatCompletionMessageToolCallUnion) (string, er
 	return "Unknow tool call", nil
 }
 
-func extractSkillInfo(path string) (any, error) {
+func extractSkillInfo(path string) (map[string]any, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
@@ -198,7 +203,7 @@ func extractSkillInfo(path string) (any, error) {
 		return nil, err
 	}
 
-	err = yaml.Unmarshal(header, &skill_header)
+	err = yaml.Unmarshal([]byte(strings.Join(header, "\n")), &skill_header)
 	if err != nil {
 		return nil, err
 	}
