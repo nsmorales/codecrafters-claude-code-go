@@ -41,6 +41,9 @@ func main() {
 	if err == nil {
 		var skills_headers []string
 		skill_header, _ := extractSkillInfo(entries[0].Name() + "/SKILL.md")
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		}
 		fmt.Fprintf(os.Stderr, "skill_header: %v\n", skill_header)
 		skills_headers = append(skills_headers, skill_promt)
 		skills_headers = append(skills_headers, fmt.Sprintf("- %s: %s", skill_header["name"], skill_header["description"]))
@@ -188,9 +191,9 @@ func extractSkillInfo(path string) (map[string]any, error) {
 	started := false
 	for sc.Scan() {
 		line := sc.Text()
-		if line == "---" && !started {
+		if strings.HasPrefix(line, "---") && !started {
 			started = true
-		} else if line == "---" && started {
+		} else if strings.HasPrefix(line, "---") && started {
 			break
 		} else if started {
 			header = append(header, line)
