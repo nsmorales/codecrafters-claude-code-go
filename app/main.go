@@ -38,7 +38,6 @@ func main() {
 
 	skill_promt := "You have access to the following skills: /n"
 	entries, err := os.ReadDir(".claude/skills/")
-	fmt.Fprintf(os.Stdout, "%v\n", entries)
 	if err == nil {
 		var skills_headers []string
 
@@ -196,7 +195,7 @@ func extractSkillInfo(path string) (map[string]any, error) {
 	started := false
 	for sc.Scan() {
 		line := sc.Text()
-		fmt.Fprintf(os.Stdout, "%v", line)
+		fmt.Fprintf(os.Stderr, "%v", line)
 		if strings.HasPrefix(line, "---") && !started {
 			started = true
 		} else if strings.HasPrefix(line, "---") && started {
