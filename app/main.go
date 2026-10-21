@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"flag"
@@ -8,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/oasdiff/yaml"
 	"github.com/openai/openai-go/v3"
 	"github.com/openai/openai-go/v3/option"
 )
@@ -33,6 +35,12 @@ func main() {
 
 	if apiKey == "" {
 		panic("Env variable OPENROUTER_API_KEY not found")
+	}
+
+	entries, err := os.ReadDir(".claude/skills/")
+	if err == nil {
+		skill_header, _ := extractSkillInfo(entries[0].Name() + "/SKILL.md")
+		fmt.Fprintf(os.Stderr, "skill_header: %v\n", skill_header)
 	}
 
 	fmt.Fprintln(os.Stderr, "Logs from your program will appear here!")
@@ -160,4 +168,40 @@ func handleTool(tool_call openai.ChatCompletionMessageToolCallUnion) (string, er
 		fmt.Print("Unknow tool")
 	}
 	return "Unknow tool call", nil
+}
+
+func extractSkillInfo(path string) (any, error) {
+	f, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	defer f.Close()
+
+	var header []string
+	sc := bufio.NewScanner(f)
+	started := false
+	for sc.Scan() {
+		line := sc.Text()
+		if line == "---" && !started {
+			started = true
+		} else if line == "---" && started {
+			break
+		} else if started {
+			header = append(header, line)
+		}
+	}
+
+	var skill_header map[string]any
+
+	if err := sc.Err(); err != nil {
+		return nil, err
+	}
+
+	err = yaml.Unmarshal(header, &skill_header)
+	if err != nil {
+		return nil, err
+	}
+
+	return skill_header, nil
 }
