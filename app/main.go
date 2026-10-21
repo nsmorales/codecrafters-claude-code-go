@@ -48,7 +48,6 @@ func main() {
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			}
-			fmt.Fprintf(os.Stderr, "skill_header: %v\n", skill_header)
 			skills_headers = append(skills_headers, fmt.Sprintf("- %s: %s", skill_header["name"], skill_header["description"]))
 		}
 		messages = append(messages, openai.SystemMessage(strings.Join(skills_headers, "\n")))
@@ -195,7 +194,6 @@ func extractSkillInfo(path string) (map[string]any, error) {
 	started := false
 	for sc.Scan() {
 		line := sc.Text()
-		fmt.Fprintf(os.Stderr, "%v", line)
 		if strings.HasPrefix(line, "---") && !started {
 			started = true
 		} else if strings.HasPrefix(line, "---") && started {
