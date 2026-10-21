@@ -124,6 +124,12 @@ func handleTool(tool_call openai.ChatCompletionMessageToolCallUnion) (string, er
 		}
 		text := string(data)
 		return text, nil
+	case "Write":
+		err := os.WriteFile(tool_args_map["file_path"], []byte(tool_args_map["content"]), 0644)
+		if err != nil {
+			return "", err
+		}
+		return "Write sucessfull", nil
 	default:
 		fmt.Print("Unknow tool")
 	}
