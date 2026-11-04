@@ -246,6 +246,7 @@ func processPrompt(prompt string, all_skills map[string]string) []openai.ChatCom
 				skill_body, _ := all_skills[value]
 				skill_args := strings.Join(skill_name[args_index:], " ")
 				var updated_body string
+				fmt.Fprintln(os.Stderr, "bodies: ", skill_args)
 				updated_body = strings.ReplaceAll(skill_body, "$ARGUMENTS", skill_args)
 				for index, value := range skill_name[args_index:] {
 					arg_position := fmt.Sprintf("$%d", index)
