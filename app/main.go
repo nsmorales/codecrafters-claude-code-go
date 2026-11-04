@@ -141,6 +141,8 @@ func main() {
 				result, err := handleTool(tool_call)
 				if err == nil {
 					messages = append(messages, openai.ToolMessage(result, tool_call.ID))
+				} else {
+					messages = append(messages, openai.ToolMessage(fmt.Sprintf("error: ", err), tool_call.ID))
 				}
 			}
 		}
