@@ -50,7 +50,7 @@ func main() {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			}
 			skills_headers = append(skills_headers, fmt.Sprintf("- %s: %s", skill_header["name"], skill_header["description"]))
-			all_skills[skill.Name()] = skill_body
+			all_skills["/"+skill.Name()] = skill_body
 		}
 		messages = append(messages, openai.SystemMessage(strings.Join(skills_headers, "\n")))
 	}
