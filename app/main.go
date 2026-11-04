@@ -38,7 +38,7 @@ func main() {
 
 	skill_promt := "You have access to the following skills: /n"
 	entries, err := os.ReadDir(".claude/skills/")
-	var all_skills map[string]string
+	all_skills := map[string]string{}
 	if err == nil {
 		var skills_headers []string
 
