@@ -58,8 +58,6 @@ func main() {
 	if strings.HasPrefix(prompt, "/") {
 		skill_name := strings.Split(prompt, " ")
 		if skill_body, ok := all_skills[skill_name[0]]; ok {
-			fmt.Fprintln(os.Stderr, "Invoke skill with %v", skill_body)
-
 			messages = append(messages, openai.UserMessage(skill_body))
 		} else {
 			messages = append(messages, openai.UserMessage(prompt))
