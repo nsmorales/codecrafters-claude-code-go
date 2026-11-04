@@ -200,11 +200,9 @@ func handleTool(tool_call openai.ChatCompletionMessageToolCallUnion, all_skills 
 		}
 		return string(out), nil
 	case "Skill":
-		fmt.Fprintln(os.Stderr, "Skill: ", tool_args_map)
 		if _, ok := all_skills["/"+tool_args_map["name"]]; ok {
 			llm_skill := generateSkillBody("/"+tool_args_map["name"], tool_args_map["args"], all_skills)
 
-			fmt.Fprintln(os.Stderr, "Skill: ", tool_args_map)
 			return llm_skill, nil
 		} else {
 			return "Unknow skill call", nil
@@ -287,16 +285,10 @@ func processPrompt(prompt string, all_skills map[string]string) []openai.ChatCom
 
 		if args_index > 0 {
 			for _, value := range skill_name[:args_index] {
-				skill_body, _ := all_skills[value]
 				skill_args := strings.Join(skill_name[args_index:], " ")
-				var updated_body string
-				updated_body = strings.ReplaceAll(skill_body, "$ARGUMENTS", skill_args)
-				for index, value := range skill_name[args_index:] {
-					arg_position := fmt.Sprintf("$%d", index)
-					updated_body = strings.ReplaceAll(updated_body, arg_position, value)
-				}
-				relative_skill := fmt.Sprintf("Skill: %s (located at .claude/skills/%s) \nPaths in the instructions below are relative to that folder.\n\n", value, value)
-				messages = append(messages, openai.UserMessage(relative_skill+updated_body))
+
+				skill_llm_body := generateSkillBody(value, skill_args, all_skills)
+				messages = append(messages, openai.UserMessage(skill_llm_body))
 
 			}
 		} else if skill_body, ok := all_skills[skill_name[0]]; ok {
