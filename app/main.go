@@ -58,7 +58,14 @@ func main() {
 	if strings.HasPrefix(prompt, "/") {
 		skill_name := strings.Split(prompt, " ")
 		if skill_body, ok := all_skills[skill_name[0]]; ok {
-			messages = append(messages, openai.UserMessage(skill_body))
+			skill_args := strings.Join(skill_name[1:], " ")
+			var updated_body string
+			updated_body = strings.ReplaceAll(skill_body, "$ARGUMENTS", skill_args)
+			for index, value := range skill_name[1:] {
+				arg_position := fmt.Sprintf("$%d", index)
+				updated_body = strings.ReplaceAll(updated_body, arg_position, value)
+			}
+			messages = append(messages, openai.UserMessage(updated_body))
 		} else {
 			messages = append(messages, openai.UserMessage(prompt))
 		}
