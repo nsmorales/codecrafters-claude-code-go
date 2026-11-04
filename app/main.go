@@ -55,23 +55,7 @@ func main() {
 		messages = append(messages, openai.SystemMessage(strings.Join(skills_headers, "\n")))
 	}
 
-	if strings.HasPrefix(prompt, "/") {
-		skill_name := strings.Split(prompt, " ")
-		if skill_body, ok := all_skills[skill_name[0]]; ok {
-			skill_args := strings.Join(skill_name[1:], " ")
-			var updated_body string
-			updated_body = strings.ReplaceAll(skill_body, "$ARGUMENTS", skill_args)
-			for index, value := range skill_name[1:] {
-				arg_position := fmt.Sprintf("$%d", index)
-				updated_body = strings.ReplaceAll(updated_body, arg_position, value)
-			}
-			messages = append(messages, openai.UserMessage(updated_body))
-		} else {
-			messages = append(messages, openai.UserMessage(prompt))
-		}
-	} else {
-		messages = append(messages, openai.UserMessage(prompt))
-	}
+	messages = append(messages, processPrompt(prompt, all_skills)...)
 
 	fmt.Fprintln(os.Stderr, "Logs from your program will appear here!")
 	client := openai.NewClient(option.WithAPIKey(apiKey), option.WithBaseURL(baseUrl))
@@ -238,4 +222,45 @@ func extractSkillInfo(path string) (map[string]any, string, error) {
 	}
 
 	return skill_header, strings.Join(body, "\n"), nil
+}
+
+func processPrompt(prompt string, all_skills map[string]string) []openai.ChatCompletionMessageParamUnion {
+	var messages []openai.ChatCompletionMessageParamUnion
+
+	if strings.HasPrefix(prompt, "/") {
+		skill_name := strings.Split(prompt, " ")
+
+		args_index := 0
+		for index := range skill_name {
+			if strings.HasPrefix(prompt, "/") {
+				args_index = index
+				if _, ok := all_skills[skill_name[index]]; !ok {
+					args_index = index + 1
+					break
+				}
+			}
+		}
+
+		if args_index > 0 {
+			for _, value := range skill_name[:args_index] {
+				skill_body, _ := all_skills[value]
+				skill_args := strings.Join(skill_name[args_index:], " ")
+				var updated_body string
+				updated_body = strings.ReplaceAll(skill_body, "$ARGUMENTS", skill_args)
+				for index, value := range skill_name[args_index:] {
+					arg_position := fmt.Sprintf("$%d", index)
+					updated_body = strings.ReplaceAll(updated_body, arg_position, value)
+				}
+
+				messages = append(messages, openai.UserMessage(updated_body))
+
+			}
+		} else {
+			messages = append(messages, openai.UserMessage(prompt))
+		}
+	} else {
+		messages = append(messages, openai.UserMessage(prompt))
+	}
+
+	return messages
 }
