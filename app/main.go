@@ -254,11 +254,13 @@ func processPrompt(prompt string, all_skills map[string]string) []openai.ChatCom
 
 				relative_skill := fmt.Sprintf("Skill: %s (locatied at .claude/skills/%s) \nPaths in the instructions below are relative to that folder.\n", value)
 
+				fmt.Fprintln(os.Stderr, "%s", relative_skill+updated_body)
 				messages = append(messages, openai.UserMessage(relative_skill+updated_body))
 
 			}
 		} else if skill_body, ok := all_skills[skill_name[0]]; ok {
 			relative_skill := fmt.Sprintf("Skill: %s (locatied at .claude/skills/%s) \nPaths in the instructions below are relative to that folder.\n", skill_name[0])
+			fmt.Fprintln(os.Stderr, "%s", relative_skill+skill_body)
 			messages = append(messages, openai.UserMessage(relative_skill+skill_body))
 		} else {
 			messages = append(messages, openai.UserMessage(prompt))
