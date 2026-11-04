@@ -56,7 +56,6 @@ func main() {
 	}
 
 	messages = append(messages, processPrompt(prompt, all_skills)...)
-	fmt.Fprintln(os.Stderr, "debug messages: ", messages)
 
 	fmt.Fprintln(os.Stderr, "Logs from your program will appear here!")
 	client := openai.NewClient(option.WithAPIKey(apiKey), option.WithBaseURL(baseUrl))
@@ -256,14 +255,11 @@ func processPrompt(prompt string, all_skills map[string]string) []openai.ChatCom
 				}
 
 				relative_skill := fmt.Sprintf("Skill: %s (located at .claude/skills/%s) \nPaths in the instructions below are relative to that folder.\n\n", value, value)
-
-				fmt.Fprintln(os.Stderr, "debug: ", relative_skill+updated_body)
 				messages = append(messages, openai.UserMessage(relative_skill+updated_body))
 
 			}
 		} else if skill_body, ok := all_skills[skill_name[0]]; ok {
 			relative_skill := fmt.Sprintf("Skill: %s (located at .claude/skills/%s) \nPaths in the instructions below are relative to that folder.\n\n", skill_name[0], skill_name[0])
-			fmt.Fprintln(os.Stderr, "debug single: ", relative_skill+skill_body)
 			messages = append(messages, openai.UserMessage(relative_skill+skill_body))
 		} else {
 			messages = append(messages, openai.UserMessage(prompt))
