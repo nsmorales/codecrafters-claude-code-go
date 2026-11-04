@@ -201,9 +201,10 @@ func handleTool(tool_call openai.ChatCompletionMessageToolCallUnion, all_skills 
 		return string(out), nil
 	case "Skill":
 		fmt.Fprintln(os.Stderr, "Skill: ", tool_args_map)
-		if _, ok := all_skills[tool_args_map["name"]]; ok {
-			llm_skill := generateSkillBody(tool_args_map["name"], tool_args_map["args"], all_skills)
+		if _, ok := all_skills["/"+tool_args_map["name"]]; ok {
+			llm_skill := generateSkillBody("/"+tool_args_map["name"], tool_args_map["args"], all_skills)
 
+			fmt.Fprintln(os.Stderr, "Skill: ", tool_args_map)
 			return llm_skill, nil
 		} else {
 			return "Unknow skill call", nil
