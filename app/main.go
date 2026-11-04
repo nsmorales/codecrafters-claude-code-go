@@ -52,6 +52,7 @@ func main() {
 			skills_headers = append(skills_headers, fmt.Sprintf("- %s: %s", skill_header["name"], skill_header["description"]))
 			all_skills["/"+skill.Name()] = skill_body
 		}
+		skills_headers = append(skills_headers, "\nIf a skill matches the user's request, call the Skill tool with its name and follow the instructions it returns.")
 		messages = append(messages, openai.SystemMessage(strings.Join(skills_headers, "\n")))
 	}
 
@@ -117,6 +118,24 @@ func main() {
 							"required": []string{"command"},
 						},
 					}),
+					openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
+						Name:        "Skill",
+						Description: openai.String("Load a skill's instructions into the conversation"),
+						Parameters: openai.FunctionParameters{
+							"type": "object",
+							"properties": map[string]any{
+								"name": map[string]any{
+									"type":        "string",
+									"description": "The name of the skill to use",
+								},
+								"args": map[string]any{
+									"type":        "string",
+									"description": "Optional arguments for the skill",
+								},
+							},
+							"required": []string{"name"},
+						},
+					}),
 				},
 			},
 		)
@@ -137,7 +156,7 @@ func main() {
 		} else {
 			for _, tool_call := range tool_calls {
 
-				result, err := handleTool(tool_call)
+				result, err := handleTool(tool_call, all_skills)
 				if err == nil {
 					messages = append(messages, openai.ToolMessage(result, tool_call.ID))
 				} else {
@@ -149,7 +168,7 @@ func main() {
 	}
 }
 
-func handleTool(tool_call openai.ChatCompletionMessageToolCallUnion) (string, error) {
+func handleTool(tool_call openai.ChatCompletionMessageToolCallUnion, all_skills map[string]string) (string, error) {
 	tool_name := tool_call.Function.Name
 	tool_args := tool_call.Function.Arguments
 	var tool_args_map map[string]string
@@ -180,6 +199,12 @@ func handleTool(tool_call openai.ChatCompletionMessageToolCallUnion) (string, er
 			return string(out), err
 		}
 		return string(out), nil
+	case "Skill":
+		if body, ok := all_skills[tool_args_map["name"]]; ok {
+			return body, nil
+		} else {
+			return "Unknow skill call", nil
+		}
 	default:
 		fmt.Print("Unknow tool")
 	}
