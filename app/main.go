@@ -56,6 +56,7 @@ func main() {
 	}
 
 	messages = append(messages, processPrompt(prompt, all_skills)...)
+	fmt.Fprintln(os.Stderr, "debug messages: ", messages)
 
 	fmt.Fprintln(os.Stderr, "Logs from your program will appear here!")
 	client := openai.NewClient(option.WithAPIKey(apiKey), option.WithBaseURL(baseUrl))
