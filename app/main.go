@@ -39,6 +39,8 @@ func main() {
 	skill_promt := "You have access to the following skills: /n"
 	entries, err := os.ReadDir(".claude/skills/")
 	all_skills := map[string]string{}
+	all_skills_headers := map[string]map[string]any{}
+
 	if err == nil {
 		var skills_headers []string
 
@@ -46,6 +48,7 @@ func main() {
 		for _, skill := range entries {
 
 			skill_header, skill_body, _ := extractSkillInfo(".claude/skills/" + skill.Name() + "/SKILL.md")
+			all_skills_headers["/"+skill.Name()] = skill_header
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			}
@@ -156,7 +159,7 @@ func main() {
 		} else {
 			for _, tool_call := range tool_calls {
 
-				result, err := handleTool(tool_call, all_skills)
+				result, err := handleTool(tool_call, all_skills, all_skills_headers, apiKey, baseUrl)
 				if err == nil {
 					messages = append(messages, openai.ToolMessage(result, tool_call.ID))
 				} else {
@@ -168,7 +171,102 @@ func main() {
 	}
 }
 
-func handleTool(tool_call openai.ChatCompletionMessageToolCallUnion, all_skills map[string]string) (string, error) {
+func subAgentLoop(apiKey string, baseUrl string, prompt string) string {
+	var messages []openai.ChatCompletionMessageParamUnion
+	messages = append(messages, openai.UserMessage(prompt))
+
+	client := openai.NewClient(option.WithAPIKey(apiKey), option.WithBaseURL(baseUrl))
+
+	resp, err := client.Chat.Completions.New(context.Background(),
+		openai.ChatCompletionNewParams{
+			Model:    "anthropic/claude-haiku-4.5",
+			Messages: messages,
+			Tools: []openai.ChatCompletionToolUnionParam{
+				openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
+					Name:        "Read",
+					Description: openai.String("Read and return the contents of a file"),
+					Parameters: openai.FunctionParameters{
+						"type": "object",
+						"properties": map[string]any{
+							"file_path": map[string]any{
+								"type":        "string",
+								"description": "The path to the file to read",
+							},
+						},
+						"required": []string{"file_path"},
+					},
+				}),
+				openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
+					Name:        "Write",
+					Description: openai.String("Write content to a file"),
+					Parameters: openai.FunctionParameters{
+						"type": "object",
+						"properties": map[string]any{
+							"file_path": map[string]any{
+								"type":        "string",
+								"description": "The path to the file to write to",
+							},
+							"content": map[string]any{
+								"type":        "string",
+								"description": "The content to write to the file",
+							},
+						},
+						"required": []string{"file_path", "content"},
+					},
+				}),
+				openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
+					Name:        "Bash",
+					Description: openai.String("Execute a shell command"),
+					Parameters: openai.FunctionParameters{
+						"type": "object",
+						"properties": map[string]any{
+							"command": map[string]any{
+								"type":        "string",
+								"description": "The path to the file to write to",
+							},
+							"content": map[string]any{
+								"type":        "string",
+								"description": "The command to execute",
+							},
+						},
+						"required": []string{"command"},
+					},
+				}),
+				openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
+					Name:        "Skill",
+					Description: openai.String("Load a skill's instructions into the conversation"),
+					Parameters: openai.FunctionParameters{
+						"type": "object",
+						"properties": map[string]any{
+							"name": map[string]any{
+								"type":        "string",
+								"description": "The name of the skill to use",
+							},
+							"args": map[string]any{
+								"type":        "string",
+								"description": "Optional arguments for the skill",
+							},
+						},
+						"required": []string{"name"},
+					},
+				}),
+			},
+		},
+	)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+	if len(resp.Choices) == 0 {
+		panic("No choices in response")
+	}
+
+	// messages = append(messages, resp.Choices[0].Message.ToParam())
+
+	return resp.Choices[0].Message.Content
+}
+
+func handleTool(tool_call openai.ChatCompletionMessageToolCallUnion, all_skills map[string]string, skills_headers map[string]map[string]any, apiKey string, baseUrl string) (string, error) {
 	tool_name := tool_call.Function.Name
 	tool_args := tool_call.Function.Arguments
 	var tool_args_map map[string]string
@@ -202,8 +300,12 @@ func handleTool(tool_call openai.ChatCompletionMessageToolCallUnion, all_skills 
 	case "Skill":
 		if _, ok := all_skills["/"+tool_args_map["name"]]; ok {
 			llm_skill := generateSkillBody("/"+tool_args_map["name"], tool_args_map["args"], all_skills)
-
-			return llm_skill, nil
+			if skills_headers["/"+tool_args_map["name"]]["context"] == "fork" {
+				response := subAgentLoop(apiKey, baseUrl, llm_skill)
+				return response, nil
+			} else {
+				return llm_skill, nil
+			}
 		} else {
 			return "Unknow skill call", nil
 		}
