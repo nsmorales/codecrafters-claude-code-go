@@ -263,7 +263,7 @@ func generateSkillBody(skill_name string, skill_args string, all_skills map[stri
 		arg_position := fmt.Sprintf("$%d", index)
 		updated_body = strings.ReplaceAll(updated_body, arg_position, value)
 	}
-	relative_skill := fmt.Sprintf("Skill: %s (located at .claude/skills/%s) \nPaths in the instructions below are relative to that folder.\n\n", value, value)
+	relative_skill := fmt.Sprintf("Skill: %s (located at .claude/skills/%s) \nPaths in the instructions below are relative to that folder.\n\n", skill_name, skill_name)
 	return relative_skill + updated_body
 }
 
