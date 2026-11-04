@@ -38,22 +38,34 @@ func main() {
 
 	skill_promt := "You have access to the following skills: /n"
 	entries, err := os.ReadDir(".claude/skills/")
+	var all_skills map[string]string
 	if err == nil {
 		var skills_headers []string
 
 		skills_headers = append(skills_headers, skill_promt)
 		for _, skill := range entries {
 
-			skill_header, _ := extractSkillInfo(".claude/skills/" + skill.Name() + "/SKILL.md")
+			skill_header, skill_body, _ := extractSkillInfo(".claude/skills/" + skill.Name() + "/SKILL.md")
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			}
 			skills_headers = append(skills_headers, fmt.Sprintf("- %s: %s", skill_header["name"], skill_header["description"]))
+			all_skills[skill.Name()] = skill_body
 		}
 		messages = append(messages, openai.SystemMessage(strings.Join(skills_headers, "\n")))
 	}
 
-	messages = append(messages, openai.UserMessage(prompt))
+	if strings.HasPrefix(prompt, "/") {
+		skill_name := strings.Split(prompt, " ")
+		if skill_body, ok := all_skills[skill_name[0]]; ok {
+			messages = append(messages, openai.UserMessage(skill_body))
+		} else {
+			messages = append(messages, openai.UserMessage(prompt))
+		}
+	} else {
+		messages = append(messages, openai.UserMessage(prompt))
+	}
+
 	fmt.Fprintln(os.Stderr, "Logs from your program will appear here!")
 	client := openai.NewClient(option.WithAPIKey(apiKey), option.WithBaseURL(baseUrl))
 
@@ -181,15 +193,16 @@ func handleTool(tool_call openai.ChatCompletionMessageToolCallUnion) (string, er
 	return "Unknow tool call", nil
 }
 
-func extractSkillInfo(path string) (map[string]any, error) {
+func extractSkillInfo(path string) (map[string]any, string, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	defer f.Close()
 
 	var header []string
+	var body []string
 	sc := bufio.NewScanner(f)
 	started := false
 	for sc.Scan() {
@@ -197,7 +210,7 @@ func extractSkillInfo(path string) (map[string]any, error) {
 		if strings.HasPrefix(line, "---") && !started {
 			started = true
 		} else if strings.HasPrefix(line, "---") && started {
-			break
+			body = append(body, line)
 		} else if started {
 			header = append(header, line)
 		}
@@ -206,13 +219,13 @@ func extractSkillInfo(path string) (map[string]any, error) {
 	var skill_header map[string]any
 
 	if err := sc.Err(); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	err = yaml.Unmarshal([]byte(strings.Join(header, "\n")), &skill_header)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	return skill_header, nil
+	return skill_header, strings.Join(body, "\n"), nil
 }
