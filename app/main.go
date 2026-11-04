@@ -58,6 +58,8 @@ func main() {
 	if strings.HasPrefix(prompt, "/") {
 		skill_name := strings.Split(prompt, " ")
 		if skill_body, ok := all_skills[skill_name[0]]; ok {
+			fmt.Fprintln(os.Stderr, "Invoke skill with %v", skill_body)
+
 			messages = append(messages, openai.UserMessage(skill_body))
 		} else {
 			messages = append(messages, openai.UserMessage(prompt))
@@ -205,11 +207,14 @@ func extractSkillInfo(path string) (map[string]any, string, error) {
 	var body []string
 	sc := bufio.NewScanner(f)
 	started := false
+	start_body := false
 	for sc.Scan() {
 		line := sc.Text()
 		if strings.HasPrefix(line, "---") && !started {
 			started = true
 		} else if strings.HasPrefix(line, "---") && started {
+			start_body = true
+		} else if start_body {
 			body = append(body, line)
 		} else if started {
 			header = append(header, line)
