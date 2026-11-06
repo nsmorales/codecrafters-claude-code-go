@@ -139,6 +139,34 @@ func main() {
 							"required": []string{"name"},
 						},
 					}),
+					openai.ChatCompletionFunctionTool(openai.FunctionDefinitionParam{
+						Name:        "LSP",
+						Description: openai.String("Returns the file, line, and character where a symbol is defined."),
+						Parameters: openai.FunctionParameters{
+							"type": "object",
+							"properties": map[string]any{
+								"operation": map[string]any{
+									"type": "string",
+									"enum": ["goToDefinition"]
+								},
+								"filePath": map[string]any{
+									"type":        "string",
+									"description": "Absolute path, or a path relative to the agent's current working directory.",
+								},
+								"line": map[string]any{
+									"type":        "string",
+									"minimum": 1,
+									"description": "1-based line number of the symbol.",
+								},
+								"character": map[string]any{
+									"type":        "string",
+									"minimum": 1,
+									"description": "1-based character offset in UTF-16 code units (same as character count for ASCII).",
+								},
+							},
+							"required": []string{"operation", "filePath", "line", "character"},
+						},
+					}),
 				},
 			},
 		)
@@ -309,6 +337,8 @@ func handleTool(tool_call openai.ChatCompletionMessageToolCallUnion, all_skills 
 		} else {
 			return "Unknow skill call", nil
 		}
+	case "LSP":
+		return "LSP is not implemented yet", nil
 	default:
 		fmt.Print("Unknow tool")
 	}
