@@ -59,7 +59,7 @@ func main() {
 		messages = append(messages, openai.SystemMessage(strings.Join(skills_headers, "\n")))
 	}
 
-	_, err := LSPClientFromEnvironment()
+	lsp_client, err := LSPClientFromEnvironment()
 	if err != nil {
 		panic("Problem connecting to LSP")
 	}
@@ -192,7 +192,7 @@ func main() {
 		} else {
 			for _, tool_call := range tool_calls {
 
-				result, err := handleTool(tool_call, all_skills, all_skills_headers, apiKey, baseUrl)
+				result, err := handleTool(tool_call, all_skills, all_skills_headers, apiKey, baseUrl, lsp_client)
 				if err == nil {
 					messages = append(messages, openai.ToolMessage(result, tool_call.ID))
 				} else {
@@ -299,7 +299,7 @@ func subAgentLoop(apiKey string, baseUrl string, prompt string) string {
 	return resp.Choices[0].Message.Content
 }
 
-func handleTool(tool_call openai.ChatCompletionMessageToolCallUnion, all_skills map[string]string, skills_headers map[string]map[string]any, apiKey string, baseUrl string) (string, error) {
+func handleTool(tool_call openai.ChatCompletionMessageToolCallUnion, all_skills map[string]string, skills_headers map[string]map[string]any, apiKey string, baseUrl string, lsp_client *LSPClient) (string, error) {
 	tool_name := tool_call.Function.Name
 	tool_args := tool_call.Function.Arguments
 	var tool_args_map map[string]string
@@ -343,6 +343,9 @@ func handleTool(tool_call openai.ChatCompletionMessageToolCallUnion, all_skills 
 			return "Unknow skill call", nil
 		}
 	case "LSP":
+		if lsp_client.client == nil {
+			return "No LSP Available", nil
+		}
 		return "LSP is not implemented yet", nil
 	default:
 		fmt.Print("Unknow tool")
