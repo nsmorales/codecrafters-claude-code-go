@@ -147,7 +147,7 @@ func main() {
 							"properties": map[string]any{
 								"operation": map[string]any{
 									"type": "string",
-									"enum": ["goToDefinition"]
+									"enum": []string{"goToDefinition"},
 								},
 								"filePath": map[string]any{
 									"type":        "string",
