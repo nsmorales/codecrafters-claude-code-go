@@ -59,6 +59,11 @@ func main() {
 		messages = append(messages, openai.SystemMessage(strings.Join(skills_headers, "\n")))
 	}
 
+	_, err := LSPClientFromEnvironment()
+	if err != nil {
+		panic("Problem connecting to LSP")
+	}
+
 	messages = append(messages, processPrompt(prompt, all_skills)...)
 
 	fmt.Fprintln(os.Stderr, "Logs from your program will appear here!")
