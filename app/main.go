@@ -63,6 +63,7 @@ func main() {
 	if err != nil {
 		panic("Problem connecting to LSP")
 	}
+	fmt.Fprintln(os.Stderr,"LSP client connected")
 
 	messages = append(messages, processPrompt(prompt, all_skills)...)
 
